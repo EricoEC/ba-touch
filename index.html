@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Blue Archive 点击和滑动动画</title>
     <style>
         * {
@@ -45,8 +45,9 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            pointer-events: none;
+            pointer-events: auto;
             z-index: 9999;
+            touch-action: none;
         }
     </style>
 </head>
@@ -68,6 +69,11 @@
             path: [],
             particles: []
         };
+
+        // ===== 仅新增：触摸点击判断变量（不改你任何原有逻辑）=====
+        let touchStartTs = 0, touchStartX = 0, touchStartY = 0;
+        const TAP_TIME = 200;
+        const TAP_DIST = 8;
 
         // 轨迹点类
         class TrailPoint {
@@ -513,6 +519,11 @@
             const x = touch.clientX - rect.left;
             const y = touch.clientY - rect.top;
 
+            // ===== 仅新增：记录点击起点 =====
+            touchStartTs = Date.now();
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+
             swipeEffect.active = true;
             swipeEffect.path = [new TrailPoint(x, y)];
             swipeEffect.particles = [];
@@ -564,6 +575,21 @@
         function handleTouchEnd(event) {
             event.preventDefault();
             swipeEffect.active = false;
+
+            // ===== 仅新增：区分点击/滑动，触发你原有的点击动画 =====
+            const dt = Date.now() - touchStartTs;
+            const t = event.changedTouches[0];
+            const dx = t.clientX - touchStartX;
+            const dy = t.clientY - touchStartY;
+            const dist = Math.hypot(dx, dy);
+
+            if (dt < TAP_TIME && dist < TAP_DIST) {
+                const rect = canvas.getBoundingClientRect();
+                const x = t.clientX - rect.left;
+                const y = t.clientY - rect.top;
+                clickEffects.push(new ClickEffect(x, y));
+                if (!animationId) animationId = requestAnimationFrame(animate);
+            }
         }
 
         function handleResize() {
